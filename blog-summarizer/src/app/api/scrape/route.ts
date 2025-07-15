@@ -4,21 +4,33 @@ import * as cheerio from "cheerio";
 import { connectMongo, Blog } from "@/lib/mongodb";
 import { supabase } from "@/lib/supabase";
 
-// Generate a simple summary (first 3 sentences)
+function cleanBlogText(text: string): string {
+  // Remove first 29 characters
+  let cleaned = text.length > 29 ? text.slice(30) : "";
+
+  // Remove "Member-only story — 122", "— 122", or just "Member-only story"
+  cleaned = cleaned
+    .replace(/Member-only story\s*—*\s*\d*/gi, "")
+    .replace(/^\s*—*\s*\d+\s*$/gm, "")
+    .replace(/^\s*Member-only story\s*$/gim, "")
+    .trim();
+
+  return cleaned;
+}
+
+
 function generateSummary(text: string): string {
   const sentences = text.split(".").map(s => s.trim()).filter(Boolean);
   if (sentences.length === 0) return "";
   return sentences.slice(0, 3).join(". ") + ".";
 }
-
-
 import { urduDictionary } from "@/lib/urduDictionary";
 
 export function translateToUrdu(text: string): string {
   return text
     .split(" ")
-    .map(word => {
-      const clean = word.toLowerCase().replace(/[^\w]/g, ""); // remove punctuation
+    .map((word) => {
+      const clean = word.toLowerCase().replace(/[^a-z]/gi, "");
       return urduDictionary[clean] || word;
     })
     .join(" ");
@@ -58,8 +70,9 @@ const { data: html } = await axios.get(url, {
     if (fullText.length < 50) {
       return NextResponse.json({ error: "Could not extract enough text for summary." }, { status: 400 });
     }
+    const cleanedText = cleanBlogText(fullText);
+    const summary = generateSummary(cleanedText);
 
-    const summary = generateSummary(fullText);
     if (!summary || summary.length < 10) {
       return NextResponse.json({ error: "No summary could be generated." }, { status: 400 });
     }
@@ -67,12 +80,12 @@ const { data: html } = await axios.get(url, {
     console.log("📝 Summary:", summary);
 
    
-    const urduSummary = translateToUrdu(summary); // NEW
+const urduSummary = await translateToUrdu(summary);
     console.log("🌐 Urdu Summary:", urduSummary);
 
     // Save full text to MongoDB
     await connectMongo();
-    const blog = new Blog({ url, text: fullText });
+    const blog = new Blog({ url, text: cleanedText });
     await blog.save();
 const { data, error: supabaseError } = await supabase
   .from("summarize")

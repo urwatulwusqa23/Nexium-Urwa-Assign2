@@ -120,3 +120,6 @@
     @apply bg-background text-foreground;
   }
 }
+.font-urdu {
+  font-family: "Noto Nastaliq Urdu", "Jameel Noori Nastaleeq", serif;
+}
