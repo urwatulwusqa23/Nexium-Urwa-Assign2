@@ -26,7 +26,7 @@ function generateSummary(text: string): string {
 }
 import { urduDictionary } from "@/lib/urduDictionary";
 
-export function translateToUrdu(text: string): string {
+function translateToUrdu(text: string): string {
   return text
     .split(" ")
     .map((word) => {
